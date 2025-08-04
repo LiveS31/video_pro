@@ -16,3 +16,4 @@ VideoBot.polling(none_stop=True, interval=0, timeout=20)
 Пароли и токены - создать info.ini  и положить все туда
 
 Можно удалить все принты чтобы не спамили (по желаню)
+# video_pro
