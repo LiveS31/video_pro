@@ -8,7 +8,7 @@ from rec_foto import screen_mov
 import configparser
 import telebot
 
-# Глобальный словарь для флагов остановки. Ключ - camera_id, значение - True/False.
+#  Глобальный словарь для флагов остановки. Ключ - camera_id, значение - True/False.
 stop_video_stream = {}
 
 # Константы для записи видео (время, файлы, кадры)
