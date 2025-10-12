@@ -1,4 +1,4 @@
-opencv-python~=4.11.0.86
-telebot~=0.0.5
-pyTelegramBotAPI~=4.27.0
-pillow~=11.3.0
+moviepy
+opencv-python #~=4.11.0.86
+pyTelegramBotAPI #~=4.27.0
+pillow #~=11.3.0

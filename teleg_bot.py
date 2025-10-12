@@ -5,20 +5,27 @@ import telebot
 from telebot import types
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 import threading
-
+####
+from rec_foto import status_cam
 
 # Импортируем ВЕСЬ  main
 import main
+CAMERA_INFO = {}
+config = configparser.ConfigParser()
+with open('info.ini', 'r', encoding='utf-8') as f:
+    config.read_file(f)
+
+vid_cam = config.get('section2', 'id_cam').split(', ')
 
 #  НАСТРОЙКИ КАМЕР
 # Определение камер:
 # "Название для кнопки": {"index": системный индекс камеры, "id": уникальный строковый идентификатор}
-CAMERA_INFO = {
-    "Камера 1": {"index": 0, "id": "cam1"},
-    # "Камера 2": {"index": 1, "id": "cam2"},
-    # добавить нужное кол-во камер
-    # Если "IP Камера": {"index": "http://user:pass@ip_address/stream", "id": "ip_cam"}
-}
+
+for i in range(len(vid_cam)):
+    if vid_cam[i].isdigit():
+        vid_cam[i] = int(vid_cam[i])
+    CAMERA_INFO[f"Камера {i+1}"] = {"index": vid_cam[i],
+                     "id": f"cam{i + 1}"}
 #  КОНЕЦ НАСТРОЕК КАМЕР
 
 # Глобальные переменные для управления видеопотоками
@@ -29,7 +36,7 @@ is_video_running = {info["id"]: False for info in CAMERA_INFO.values()} # {"cam_
 config = configparser.ConfigParser()
 with open('info.ini', 'r', encoding='utf-8') as f:
     config.read_file(f)
-
+# заполняем параметры из файла
 tel_key = config.get('section1', 'tel_bot')
 userid = config.get('section1', 'userid')
 VideoBot = telebot.TeleBot(f'{tel_key}')
@@ -61,7 +68,7 @@ markup.add(
     KeyboardButton("ВИДЕО 📹"),
     KeyboardButton("ФОТО 📷"),
     KeyboardButton('Запустить видео'),
-   # KeyboardButton('Остановить поток')
+    KeyboardButton('Остановить поток')
 )
 
 @VideoBot.message_handler(commands=['start'])
@@ -78,7 +85,7 @@ def message_user(message):
 
     action_map = {
         'запустить видео': 'start_cam',
-        #'остановить поток': 'stop_cam', # не фига не работает. ну и фиг с ним
+        'остановить поток': 'stop_cam',
         'видео 📹': 'select_cam_video',
         'фото 📷': 'select_cam_foto'
     }
@@ -92,14 +99,17 @@ def message_user(message):
 
     # Создаем клавиатуру для выбора камеры
     cam_selection_markup = types.InlineKeyboardMarkup(row_width=1)
-    for cam_name, cam_data in CAMERA_INFO.items():
-        # ИСПОЛЬЗУЕМ ДВОЕТОЧИЕ (:) КАК НАДЕЖНЫЙ РАЗДЕЛИТЕЛЬ
+    for cam_name, cam_data,  in CAMERA_INFO.items():
+        # ИСПОЛЬЗУЕМ ДВОЕТОЧИЕ (:) КАК РАЗДЕЛИТЕЛЬ
         callback_data = f'{action_prefix}:{cam_data["id"]}'
-        cam_selection_markup.add(types.InlineKeyboardButton(cam_name, callback_data=callback_data))
+        # вот как оставить просто камеа или ее номер , или как она назава
+        rt = (f'\nИмя: {cam_data["index"]}')
+        #cam_selection_markup.add(types.InlineKeyboardButton(cam_name, callback_data=callback_data))
+        cam_selection_markup.add(types.InlineKeyboardButton((cam_name+rt), callback_data=callback_data))
 
     action_messages = {
         'start_cam': "Какую камеру запустить?",
-       # 'stop_cam': "Какую камеру остановить?", # ну и тоже не фига не работает
+        'stop_cam': "Какую камеру остановить?", # ну и тоже не фига не работает
         'select_cam_video': "Выбери камеру для просмотра видео:",
         'select_cam_foto': "Выбери камеру для просмотра фото:"
     }
@@ -108,7 +118,7 @@ def message_user(message):
 
 @VideoBot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
-    # Основной обработчик  inline-кнопок
+    # Основной обработчик inline-кнопок
     if not (call.from_user.id == int(userid)):
         VideoBot.answer_callback_query(call.id, "У вас нет доступа.")
         return
@@ -142,7 +152,7 @@ def callback_query(call):
             camera_threads[cam_id] = thread
             is_video_running[cam_id] = True
 
-    #  2. ОСТАНОВКА ПОТОКА ( НЕ РАБОТАЕТ)
+    #  2. ОСТАНОВКА ПОТОКА
     elif action == 'stop_cam':
         if is_video_running.get(cam_id) and camera_threads.get(cam_id) and camera_threads[cam_id].is_alive():
             main.stop_video_stream[cam_id] = True # Устанавливаем флаг остановки
@@ -224,7 +234,8 @@ def callback_query(call):
         VideoBot.answer_callback_query(call.id, "Неизвестное действие.")
 
 
-print("Бот запущен. Ожидание сообщений...")
+
+status_cam( "Бот запущен.\nВыберите действия или\nнажмите /start для вызова меню")
 VideoBot.polling(none_stop=True, interval=0)
 
 
