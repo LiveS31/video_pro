@@ -33,4 +33,6 @@ def screen_mov(frame, times, camera_id="default_cam"):
 
     return f"Скриншот для {camera_id.replace('cam', 'камеры ')} сохранен: {os.path.basename(filename)}"
 
-
+def status_cam(text):
+    bot_instance.send_message(int(userid), text )
+    return f'{text}'
