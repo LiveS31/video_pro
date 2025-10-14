@@ -144,9 +144,9 @@ def callback_query(call):
             return
 
         if is_video_running.get(cam_id) and camera_threads.get(cam_id) and camera_threads[cam_id].is_alive():
-            VideoBot.send_message(call.message.chat.id, f"Поток для '{cam_id.replace('cam', 'камеры ')}' уже запущен.")
+            VideoBot.send_message(call.message.chat.id, f"Поток '{cam_id.replace('cam', 'камеры ')}' уже запущен.")
         else:
-            VideoBot.send_message(call.message.chat.id, f"Запускаю поток '{cam_id.replace('cam', 'камеры ')}'...")
+            VideoBot.send_message(call.message.chat.id, f"Запуск потока '{cam_id.replace('cam', 'камеры ')}'...")
             thread = threading.Thread(target=main.video_cap, args=(cam_index, cam_id,))
             thread.start()
             camera_threads[cam_id] = thread
@@ -157,9 +157,9 @@ def callback_query(call):
         if is_video_running.get(cam_id) and camera_threads.get(cam_id) and camera_threads[cam_id].is_alive():
             main.stop_video_stream[cam_id] = True # Устанавливаем флаг остановки
             is_video_running[cam_id] = False
-            VideoBot.send_message(call.message.chat.id, f"Команда на остановку для "
-                                                        f"'{cam_id.replace('cam', 'камеры ')}' отправлена. "
-                                                        f"Это может занять несколько секунд...")
+            VideoBot.send_message(call.message.chat.id, f"Отправлена команда остановки "
+                                                        f"{cam_id.replace('cam', 'камеры: ')} .\n"
+                                                        f"Может занять время...")
         else:
             VideoBot.send_message(call.message.chat.id, f"Поток для '{cam_id.replace('cam', 'камеры ')}' не запущен.")
 
