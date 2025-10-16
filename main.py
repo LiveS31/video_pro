@@ -5,7 +5,7 @@ import os
 import datetime
 from collections import deque
 from rec_foto import screen_mov, status_cam
-from conv_vid import start_conv_video
+from conv_vid import start_conv_video, del_and_free
 from multiprocessing import Process
 import configparser
 import telebot
@@ -166,7 +166,13 @@ def video_start(cap, camera_id):
                                                            f"{datetime.datetime.now().strftime('%H:%M:%S %d.%m.%y')}")
                     #print(f"Ошибка при запуске процесса конвертации: {e}")
 ############################################################################################################
-
+            # Запуск очистки и проверки заполнения диска
+        if time.strftime('%H%59'):
+            try:
+                del_and_free()
+            except Exception as e:
+                print(f'Ошибка запуска {e}')
+###########################################################################################################
 
         prev_frame = gray_frame1.copy()
 

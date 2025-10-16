@@ -49,6 +49,12 @@ VideoBot = telebot.TeleBot(f'{tel_key}')
 video_base = config.get('section2', 'video')
 # пути для сохранения скринов
 screen_dir = config.get('section2', 'pict')
+# состояние камеры при старте бота
+cam_status = config.get('section2', 'cam_status')
+
+###### global ################
+test = 0
+##############################
 
 
 #  Определение путей к файлам в зависимости от ОС
@@ -85,6 +91,25 @@ markup.add(
     KeyboardButton('Остановить поток'),
     KeyboardButton(f'Место доступное на диске: {del_and_free(0)[1]}%')
     )
+
+
+
+#####################################################################################
+# запуск камер при старте бота при флаге On
+
+def cam_start(cam_status):
+    if cam_status.lower() == 'on':
+        for cam_name, cam_data in CAMERA_INFO.items():
+                cam_id = cam_data["id"]
+                cam_index = cam_data["index"]
+                thread = threading.Thread(target=main.video_cap, args=(cam_index, cam_id,))
+                thread.start()
+
+                # Сохраняем информацию о потоке
+                camera_threads[cam_id] = thread
+                is_video_running[cam_id] = True
+###############################################
+
 
 @VideoBot.message_handler(commands=['start'])
 def start_message(message):
@@ -152,6 +177,7 @@ def message_user(message):
 
 @VideoBot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
+
     # Основной обработчик inline-кнопок
     if not (call.from_user.id == int(userid)):
         VideoBot.answer_callback_query(call.id, "У вас нет доступа.")
@@ -169,7 +195,6 @@ def callback_query(call):
     cam_id = parts[1] if len(parts) > 1 else None
     folder_name = parts[2] if len(parts) > 2 else None
     file_name = parts[3] if len(parts) > 3 else None
-
 
 
     # 1. ЗАПУСК ПОТОКА
@@ -269,8 +294,10 @@ def callback_query(call):
 
     else:
         VideoBot.answer_callback_query(call.id, "Неизвестное действие.")
-
-
+# -------------------------------------------------------------
+# НОВАЯ ЧАСТЬ: Вызов функции автозапуска
+cam_start(cam_status)
+# -------------------------------------------------------------
 
 status_cam( "Бот запущен.\nВыберите действия или\nнажмите /start для вызова меню")
 VideoBot.polling(none_stop=True, interval=0)
