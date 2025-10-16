@@ -1,9 +1,13 @@
 # конвектор
+import datetime
 import time
 from moviepy import VideoFileClip
 import os
 import telebot
 import configparser
+import shutil
+
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
 config = configparser.ConfigParser()
 with open('info.ini', 'r', encoding='utf-8') as f:
@@ -12,15 +16,18 @@ with open('info.ini', 'r', encoding='utf-8') as f:
 tel_key = config.get('section1', 'tel_bot')
 userid = config.get('section1', 'userid')
 bot_instance = telebot.TeleBot(f'{tel_key}') # вводим токен бота в переменную
-
+video_base_dir = config.get('section2', 'video')
 
 if os.name == 'posix':
-    video_base_dir = os.path.expanduser("~/Видео")
+    #video_base_dir = os.path.expanduser("~/Видео")
     sl = '/'
 else:
-    video_base_dir = 'C:\\video'
+    #video_base_dir = 'C:\\video'
     sl = '\\'
 
+
+
+#########################################################################################
 # запускаем конвертации по n дней.
 def start_conv_video(days=7):
     now = time.time()
@@ -51,3 +58,10 @@ def start_conv_video(days=7):
                             bot_instance.send_message(int(userid), f'Ошибка кодировки файла\n{file}')
     return
 
+def del_and_free(info=None):
+    total, used, free = shutil.disk_usage(video_base_dir)
+    free_proc = round((free / total * 100), 2)
+    answer_user = (f'Данные обновлены на\n'
+                   f'{datetime.datetime.now()}')
+    answer_from_user = [answer_user, free_proc]
+    return answer_from_user

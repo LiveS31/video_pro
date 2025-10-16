@@ -41,6 +41,11 @@ fps = int(config.get('section2', 'fps_inf'))
 # Новые параметры для разрешения
 frame_width_conf = int(config.get('section2', 'width'))
 frame_height_conf = int(config.get('section2', 'height'))
+# пути для сохранения видео
+video_base = config.get('section2', 'video')
+# пути для сохранения скринов
+screen_dir = config.get('section2', 'pict')
+
 
 ############################################################################################
 bot_instance = telebot.TeleBot(f'{tel_key}')
@@ -87,11 +92,11 @@ def video_start(cap, camera_id):
     frame_size = (frame_width, frame_height)
 
     if os.name == 'posix':
-        video_base_dir = f'/home/lives/Видео/{camera_id}'
-        screenshot_base_dir = f'/home/lives/Изображения/{camera_id}'
+        video_base_dir = f'{video_base}/{camera_id}'
+        screenshot_base_dir = f'{screen_dir}/{camera_id}'
     else:
-        video_base_dir = f'C:\\video\\{camera_id}'
-        screenshot_base_dir = f'C:\\Изображения\\{camera_id}'
+        video_base_dir = f'{video_base}\\{camera_id}'
+        screenshot_base_dir = f'{screen_dir}\\{camera_id}'
 
     os.makedirs(video_base_dir, exist_ok=True)
     os.makedirs(screenshot_base_dir, exist_ok=True)

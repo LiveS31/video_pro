@@ -7,6 +7,11 @@ from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 import threading
 ####
 from rec_foto import status_cam
+from conv_vid import del_and_free
+######темп
+import shutil
+##### nemp
+
 
 # Импортируем ВЕСЬ  main
 import main
@@ -40,14 +45,23 @@ with open('info.ini', 'r', encoding='utf-8') as f:
 tel_key = config.get('section1', 'tel_bot')
 userid = config.get('section1', 'userid')
 VideoBot = telebot.TeleBot(f'{tel_key}')
+# пути для сохранения видео
+video_base = config.get('section2', 'video')
+# пути для сохранения скринов
+screen_dir = config.get('section2', 'pict')
+
 
 #  Определение путей к файлам в зависимости от ОС
 if os.name == 'posix': # для Linux/macOS
-    base_video_path = f'/home/lives/Видео' # изменить на свой путь
-    base_screenshot_path = f"/home/lives/Изображения"
+    base_video_path = video_base
+    base_screenshot_path = screen_dir
+    # base_video_path = f'/home/lives/Видео' # изменить на свой путь
+    # base_screenshot_path = f"/home/lives/Изображения"
 else: # для Windows
-    base_video_path = f'C:\\video'
-    base_screenshot_path = f"C:\\Изображения"
+    base_video_path = video_base
+    base_screenshot_path = screen_dir
+    # base_video_path = f'C:\\video'
+    # base_screenshot_path = f"C:\\Изображения"
 
 def get_folders_list(base_dir, camera_id):
     """Возвращает список папок для указанной камеры."""
@@ -68,8 +82,9 @@ markup.add(
     KeyboardButton("ВИДЕО 📹"),
     KeyboardButton("ФОТО 📷"),
     KeyboardButton('Запустить видео'),
-    KeyboardButton('Остановить поток')
-)
+    KeyboardButton('Остановить поток'),
+    KeyboardButton(f'Место доступное на диске: {del_and_free(0)[1]}%')
+    )
 
 @VideoBot.message_handler(commands=['start'])
 def start_message(message):
@@ -83,15 +98,33 @@ def message_user(message):
         VideoBot.send_message(message.chat.id, "У вас нет доступа.")
         return
 
+
     action_map = {
         'запустить видео': 'start_cam',
         'остановить поток': 'stop_cam',
         'видео 📹': 'select_cam_video',
-        'фото 📷': 'select_cam_foto'
+        'фото 📷': 'select_cam_foto',
+
     }
 
     # Получаем префикс для callback_data на основе текста сообщения
     action_prefix = action_map.get(message.text.lower())
+    ####################################################################################
+    # 6.   % заполненности диска
+    if message.text[:5] == 'Место':
+        info = del_and_free()
+        markup1 = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=True)
+        markup1.add(
+            KeyboardButton("ВИДЕО 📹"),
+            KeyboardButton("ФОТО 📷"),
+            KeyboardButton('Запустить видео'),
+            KeyboardButton('Остановить поток'),
+            KeyboardButton(f'Место доступное на диске: {del_and_free(0)[1]}%')
+        )
+        VideoBot.send_message(message.chat.id, f'{info[0][:-7]}\n'
+                                               f'Доступно: {info[1]}%', reply_markup=markup1)
+        return
+    ####################################################################################
 
     if not action_prefix:
         VideoBot.send_message(message.chat.id, "Неизвестная команда.", reply_markup=markup)
@@ -102,16 +135,17 @@ def message_user(message):
     for cam_name, cam_data,  in CAMERA_INFO.items():
         # ИСПОЛЬЗУЕМ ДВОЕТОЧИЕ (:) КАК РАЗДЕЛИТЕЛЬ
         callback_data = f'{action_prefix}:{cam_data["id"]}'
-        # вот как оставить просто камеа или ее номер , или как она назава
+        # вот как оставить просто камера или ее номер, или как она названа
         rt = (f'\nИмя: {cam_data["index"]}')
         #cam_selection_markup.add(types.InlineKeyboardButton(cam_name, callback_data=callback_data))
         cam_selection_markup.add(types.InlineKeyboardButton((cam_name+rt), callback_data=callback_data))
 
     action_messages = {
         'start_cam': "Какую камеру запустить?",
-        'stop_cam': "Какую камеру остановить?", # ну и тоже не фига не работает
+        'stop_cam': "Какую камеру остановить?",
         'select_cam_video': "Выбери камеру для просмотра видео:",
-        'select_cam_foto': "Выбери камеру для просмотра фото:"
+        'select_cam_foto': "Выбери камеру для просмотра фото:",
+
     }
     VideoBot.send_message(message.chat.id, action_messages[action_prefix], reply_markup=cam_selection_markup)
 
@@ -122,6 +156,7 @@ def callback_query(call):
     if not (call.from_user.id == int(userid)):
         VideoBot.answer_callback_query(call.id, "У вас нет доступа.")
         return
+
 
     #  CALL.DATA
     # двоеточие как разделитель, чтобы избежать конфликтов с именами файлов
@@ -134,6 +169,8 @@ def callback_query(call):
     cam_id = parts[1] if len(parts) > 1 else None
     folder_name = parts[2] if len(parts) > 2 else None
     file_name = parts[3] if len(parts) > 3 else None
+
+
 
     # 1. ЗАПУСК ПОТОКА
     if action == 'start_cam':
