@@ -109,7 +109,7 @@ def message_user(message):
 
     # Получаем префикс для callback_data на основе текста сообщения
     action_prefix = action_map.get(message.text.lower())
-    ####################################################################################
+####################################################################################
     # 6.   % заполненности диска
     if message.text[:5] == 'Место':
         info = del_and_free()
@@ -124,7 +124,7 @@ def message_user(message):
         VideoBot.send_message(message.chat.id, f'{info[0][:-7]}\n'
                                                f'Доступно: {info[1]}%', reply_markup=markup1)
         return
-    ####################################################################################
+####################################################################################
 
     if not action_prefix:
         VideoBot.send_message(message.chat.id, "Неизвестная команда.", reply_markup=markup)
