@@ -5,16 +5,13 @@ import telebot
 from telebot import types
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 import threading
-####
 from rec_foto import status_cam
 from conv_vid import del_and_free
-######темп
-import shutil
-##### nemp
-
-
 # Импортируем ВЕСЬ  main
 import main
+
+
+
 CAMERA_INFO = {}
 config = configparser.ConfigParser()
 with open('info.ini', 'r', encoding='utf-8') as f:
@@ -24,18 +21,20 @@ vid_cam = config.get('section2', 'id_cam').split(', ')
 
 #  НАСТРОЙКИ КАМЕР
 # Определение камер:
-# "Название для кнопки": {"index": системный индекс камеры, "id": уникальный строковый идентификатор}
+# "Название для кнопки":
+    # {"index": системный индекс камеры,
+    # "id": уникальный строковый идентификатор}
 
 for i in range(len(vid_cam)):
     if vid_cam[i].isdigit():
         vid_cam[i] = int(vid_cam[i])
-    CAMERA_INFO[f"Камера {i+1}"] = {"index": vid_cam[i],
-                     "id": f"cam{i + 1}"}
-#  КОНЕЦ НАСТРОЕК КАМЕР
+    CAMERA_INFO[f"Камера {i + 1}"] = {"index": vid_cam[i],
+                                      "id": f"cam{i + 1}"}
 
 # Глобальные переменные для управления видеопотоками
-camera_threads = {} # {"cam_id": Thread_object} - хранит потоки для каждой камеры
-is_video_running = {info["id"]: False for info in CAMERA_INFO.values()} # {"cam_id": True/False} - хранит состояние потока
+camera_threads = {}  # {"cam_id": Thread_object} - хранит потоки для каждой камеры
+is_video_running = {info["id"]: False for info in
+                    CAMERA_INFO.values()}  # {"cam_id": True/False} - хранит состояние потока
 
 #  Чтение конфигурации из info.ini
 config = configparser.ConfigParser()
@@ -51,36 +50,31 @@ video_base = config.get('section2', 'video')
 screen_dir = config.get('section2', 'pict')
 # состояние камеры при старте бота
 cam_status = config.get('section2', 'cam_status')
-
-###### global ################
-test = 0
-##############################
-
+# количество кнопок
+max_but = int(config.get('section2', 'max_but'))
 
 #  Определение путей к файлам в зависимости от ОС
-if os.name == 'posix': # для Linux/macOS
+if os.name == 'posix':  # для Linux/macOS
     base_video_path = video_base
     base_screenshot_path = screen_dir
-    # base_video_path = f'/home/lives/Видео' # изменить на свой путь
-    # base_screenshot_path = f"/home/lives/Изображения"
-else: # для Windows
+else:  # для Windows
     base_video_path = video_base
     base_screenshot_path = screen_dir
-    # base_video_path = f'C:\\video'
-    # base_screenshot_path = f"C:\\Изображения"
+
 
 def get_folders_list(base_dir, camera_id):
     """Возвращает список папок для указанной камеры."""
     full_path = os.path.join(base_dir, camera_id)
     if not os.path.exists(full_path):
         os.makedirs(full_path, exist_ok=True)
-        return [] # Возвращаем пустой список, если только что создали
+        return []  # Возвращаем пустой список, если только что создали
     try:
         # Возвращаем только директории
         return [d for d in os.listdir(full_path) if os.path.isdir(os.path.join(full_path, d))]
     except Exception as e:
         print(f"Ошибка при получении списка папок из {full_path}: {e}")
         return []
+
 
 # --- Клавиатура основного меню ---
 markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=True)
@@ -90,24 +84,27 @@ markup.add(
     KeyboardButton('Запустить видео'),
     KeyboardButton('Остановить поток'),
     KeyboardButton(f'Место доступное на диске: {del_and_free(0)[1]}%')
-    )
-
+        )
 
 
 #####################################################################################
 # запуск камер при старте бота при флаге On
-
 def cam_start(cam_status):
     if cam_status.lower() == 'on':
         for cam_name, cam_data in CAMERA_INFO.items():
-                cam_id = cam_data["id"]
-                cam_index = cam_data["index"]
-                thread = threading.Thread(target=main.video_cap, args=(cam_index, cam_id,))
-                thread.start()
+            cam_id = cam_data["id"]
+            cam_index = cam_data["index"]
 
-                # Сохраняем информацию о потоке
-                camera_threads[cam_id] = thread
-                is_video_running[cam_id] = True
+            # Kwargs для явной передачи аргументов
+            thread = threading.Thread(target=main.video_cap, kwargs={'videos': cam_index, 'camera_id': cam_id})
+
+            thread.start()
+
+            # Сохраняем информацию о потоке
+            camera_threads[cam_id] = thread
+            is_video_running[cam_id] = True
+
+
 ###############################################
 
 
@@ -123,18 +120,17 @@ def message_user(message):
         VideoBot.send_message(message.chat.id, "У вас нет доступа.")
         return
 
-
     action_map = {
         'запустить видео': 'start_cam',
         'остановить поток': 'stop_cam',
         'видео 📹': 'select_cam_video',
         'фото 📷': 'select_cam_foto',
-
-    }
+        'файл для загрузки': 'down_rec_file',
+            }
 
     # Получаем префикс для callback_data на основе текста сообщения
     action_prefix = action_map.get(message.text.lower())
-####################################################################################
+    ####################################################################################
     # 6.   % заполненности диска
     if message.text[:5] == 'Место':
         info = del_and_free()
@@ -149,7 +145,7 @@ def message_user(message):
         VideoBot.send_message(message.chat.id, f'{info[0][:-7]}\n'
                                                f'Доступно: {info[1]}%', reply_markup=markup1)
         return
-####################################################################################
+    ####################################################################################
 
     if not action_prefix:
         VideoBot.send_message(message.chat.id, "Неизвестная команда.", reply_markup=markup)
@@ -157,32 +153,29 @@ def message_user(message):
 
     # Создаем клавиатуру для выбора камеры
     cam_selection_markup = types.InlineKeyboardMarkup(row_width=1)
-    for cam_name, cam_data,  in CAMERA_INFO.items():
+    for cam_name, cam_data, in CAMERA_INFO.items():
         # ИСПОЛЬЗУЕМ ДВОЕТОЧИЕ (:) КАК РАЗДЕЛИТЕЛЬ
         callback_data = f'{action_prefix}:{cam_data["id"]}'
         # вот как оставить просто камера или ее номер, или как она названа
         rt = (f'\nИмя: {cam_data["index"]}')
-        #cam_selection_markup.add(types.InlineKeyboardButton(cam_name, callback_data=callback_data))
-        cam_selection_markup.add(types.InlineKeyboardButton((cam_name+rt), callback_data=callback_data))
+        cam_selection_markup.add(types.InlineKeyboardButton((cam_name + rt), callback_data=callback_data))
 
     action_messages = {
         'start_cam': "Какую камеру запустить?",
         'stop_cam': "Какую камеру остановить?",
         'select_cam_video': "Выбери камеру для просмотра видео:",
         'select_cam_foto': "Выбери камеру для просмотра фото:",
-
-    }
+        'down_rec_file': 'Файл для загрузки:',
+        }
     VideoBot.send_message(message.chat.id, action_messages[action_prefix], reply_markup=cam_selection_markup)
 
 
 @VideoBot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
-
     # Основной обработчик inline-кнопок
     if not (call.from_user.id == int(userid)):
         VideoBot.answer_callback_query(call.id, "У вас нет доступа.")
         return
-
 
     #  CALL.DATA
     # двоеточие как разделитель, чтобы избежать конфликтов с именами файлов
@@ -196,7 +189,6 @@ def callback_query(call):
     folder_name = parts[2] if len(parts) > 2 else None
     file_name = parts[3] if len(parts) > 3 else None
 
-
     # 1. ЗАПУСК ПОТОКА
     if action == 'start_cam':
         cam_index = next((info["index"] for name, info in CAMERA_INFO.items() if info["id"] == cam_id), None)
@@ -209,7 +201,10 @@ def callback_query(call):
             VideoBot.send_message(call.message.chat.id, f"Поток '{cam_id.replace('cam', 'камеры ')}' уже запущен.")
         else:
             VideoBot.send_message(call.message.chat.id, f"Запуск потока '{cam_id.replace('cam', 'камеры ')}'...")
-            thread = threading.Thread(target=main.video_cap, args=(cam_index, cam_id,))
+
+            # Kwargs для передачи аргумента
+            thread = threading.Thread(target=main.video_cap, kwargs={'videos': cam_index, 'camera_id': cam_id})
+
             thread.start()
             camera_threads[cam_id] = thread
             is_video_running[cam_id] = True
@@ -217,11 +212,12 @@ def callback_query(call):
     #  2. ОСТАНОВКА ПОТОКА
     elif action == 'stop_cam':
         if is_video_running.get(cam_id) and camera_threads.get(cam_id) and camera_threads[cam_id].is_alive():
-            main.stop_video_stream[cam_id] = True # Устанавливаем флаг остановки
+            main.stop_video_stream[cam_id] = True  # Устанавливаем флаг остановки
             is_video_running[cam_id] = False
+
             VideoBot.send_message(call.message.chat.id, f"Отправлена команда остановки "
                                                         f"{cam_id.replace('cam', 'камеры: ')} .\n"
-                                                        f"Может занять время...")
+                                                        f"Ожидайте завершения потока.")
         else:
             VideoBot.send_message(call.message.chat.id, f"Поток для '{cam_id.replace('cam', 'камеры ')}' не запущен.")
 
@@ -229,15 +225,18 @@ def callback_query(call):
     elif action in ['select_cam_video', 'select_cam_foto']:
         base_path = base_video_path if action == 'select_cam_video' else base_screenshot_path
         scan_action = 'skan_video' if action == 'select_cam_video' else 'skan_foto'
-        
+
         folders = get_folders_list(base_path, cam_id)
         if not folders:
             VideoBot.send_message(call.message.chat.id, f'Папка с файлами для '
                                                         f'{cam_id.replace('cam', 'камеры ')} пуста или не существует.')
             return
+    # добовляем лимит
+        foldr_ent = folders[:max_but]
+
 
         markup = types.InlineKeyboardMarkup(row_width=1)
-        for folder in folders:
+        for folder in foldr_ent:
             callback_data = f'{scan_action}:{cam_id}:{folder}'
             markup.add(types.InlineKeyboardButton(folder, callback_data=callback_data))
         VideoBot.send_message(call.message.chat.id,
@@ -252,14 +251,24 @@ def callback_query(call):
             VideoBot.send_message(call.message.chat.id, "Ошибка: Папка не найдена.")
             return
 
-        files = [f for f in os.listdir(current_path) if os.path.isfile(os.path.join(current_path, f))]
-        if not files:
+        all_files = [f for f in os.listdir(current_path) if os.path.isfile(os.path.join(current_path, f))]
+        all_files.sort(reverse=True)  # Самые новые сверху
+
+        if not all_files:
             VideoBot.send_message(call.message.chat.id, 'В этой папке нет файлов.')
             return
 
+        foldr_ent = all_files[:max_but]
+
+        # files = [f for f in os.listdir(current_path) if os.path.isfile(os.path.join(current_path, f))]
+        # if not files:
+        #     VideoBot.send_message(call.message.chat.id, 'В этой папке нет файлов.')
+        #     return
+
         markup = types.InlineKeyboardMarkup(row_width=1)
-        for f_name in files:
-            # Передаем все части дальше, используя ':'
+
+        for f_name in foldr_ent:
+            # Передаем дальше
             callback_data = f'up:{cam_id}:{folder_name}:{f_name}'
             markup.add(types.InlineKeyboardButton(f_name, callback_data=callback_data))
         VideoBot.send_message(call.message.chat.id, 'Выбери файл для просмотра:', reply_markup=markup)
@@ -268,14 +277,14 @@ def callback_query(call):
     elif action == 'up':
         is_video_file = file_name.lower().endswith(('.mp4', '.avi', '.mov', '.mkv'))
         base_path = base_video_path if is_video_file else base_screenshot_path
-        
+
         # Собираем корректный путь из разобранных частей
         file_path = os.path.join(base_path, cam_id, folder_name, file_name)
 
         if not os.path.exists(file_path):
             VideoBot.send_message(call.message.chat.id, f"Файл не найден! Ожидался путь: {file_path}")
             return
-        
+
         try:
             with open(file_path, 'rb') as f:
                 if file_path.lower().endswith(('.png', '.jpg', '.jpeg')):
@@ -292,14 +301,14 @@ def callback_query(call):
         except Exception as e:
             VideoBot.send_message(call.message.chat.id, f"Не удалось отправить файл: {e}")
 
+    # # 6. Получение записанного файла
+    # elif action == 'down_rec_file':
+    #     VideoBot.edit_message_text(call.message.chat.id, 'gdfgdfgdfgdfgdfg')
+
     else:
-        VideoBot.answer_callback_query(call.id, "Неизвестное действие.")
-# -------------------------------------------------------------
-# НОВАЯ ЧАСТЬ: Вызов функции автозапуска
-cam_start(cam_status)
-# -------------------------------------------------------------
+        VideoBot.answer_callback_query(call.id, "Неизвестное действие.") \
 
-status_cam( "Бот запущен.\nВыберите действия или\nнажмите /start для вызова меню")
+
+cam_start(cam_status) # Вызов функции автозапуска камер
+status_cam("Бот запущен.\nВыберите действия или\nнажмите /start для вызова меню")
 VideoBot.polling(none_stop=True, interval=0)
-
-
